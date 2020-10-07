@@ -8,12 +8,15 @@ scalaVersion := "2.13.3"
 
 val unusedWarnings = (
   "-Ywarn-unused" ::
-  Nil
+    Nil
 )
 
-scalacOptions ++= PartialFunction.condOpt(CrossVersion.partialVersion(scalaVersion.value)){
-  case Some((2, v)) if v >= 11 => unusedWarnings
-}.toList.flatten
+scalacOptions ++= PartialFunction
+  .condOpt(CrossVersion.partialVersion(scalaVersion.value)) {
+    case Some((2, v)) if v >= 11 => unusedWarnings
+  }
+  .toList
+  .flatten
 
 Seq(Compile, Test).flatMap(c =>
   scalacOptions in (c, console) --= unusedWarnings
@@ -30,3 +33,11 @@ libraryDependencies ++= Seq(
   "ws.unfiltered" %% "unfiltered-specs2" % unfilteredVersion % "test",
   "com.google.cloud" % "google-cloud-datastore" % "1.104.0"
 )
+
+val circeVersion = "0.12.3"
+
+libraryDependencies ++= Seq(
+  "io.circe" %% "circe-core",
+  "io.circe" %% "circe-generic",
+  "io.circe" %% "circe-parser"
+).map(_ % circeVersion)
