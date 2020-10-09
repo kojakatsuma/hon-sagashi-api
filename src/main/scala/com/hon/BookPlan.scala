@@ -27,7 +27,7 @@ class BookPlan extends Plan {
       val allGetQueryBuilder = Query.newEntityQueryBuilder().setKind("book")
       if (nextPage.isEmpty()) {
         allGetQueryBuilder.setOffset(0).setLimit(10)
-      } else allGetQueryBuilder.setStartCursor(Cursor.fromUrlSafe(nextPage))
+      } else allGetQueryBuilder.setStartCursor(Cursor.fromUrlSafe(nextPage)).setLimit(10)
 
       val results =
         datastore.run(allGetQueryBuilder.build, Seq.empty[ReadOption]: _*)
