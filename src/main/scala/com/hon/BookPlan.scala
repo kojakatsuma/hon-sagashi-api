@@ -9,23 +9,28 @@ io.circe.syntax._
 import com.google.cloud.datastore.Entity
 import com.google.cloud.datastore.Query
 import com.google.cloud.datastore.ReadOption
+import com.google.cloud.datastore.Cursor
 
 case class Book(
     title: String,
     url: String,
     library: List[String],
     isSuggest: Boolean,
-    isWakachiGaki: Boolean
+    isWakatiGaki: Boolean
 )
 
 class BookPlan extends Plan {
   def intent = {
-    case GET(Path("/books")) =>
+    case r @ GET(Path("/books")) =>
       val datastore = DatastoreOptions.getDefaultInstance().getService()
-      val allGetQuery = Query
-        .newGqlQueryBuilder(Query.ResultType.ENTITY, "select * from book")
-        .build()
-      val results = datastore.run(allGetQuery, Seq.empty[ReadOption]: _*)
+      val nextPage = r.headers("next").mkString
+      val allGetQueryBuilder = Query.newEntityQueryBuilder().setKind("book")
+      if (nextPage.isEmpty()) {
+        allGetQueryBuilder.setOffset(0).setLimit(10)
+      } else allGetQueryBuilder.setStartCursor(Cursor.fromUrlSafe(nextPage))
+
+      val results =
+        datastore.run(allGetQueryBuilder.build, Seq.empty[ReadOption]: _*)
       var books = List[Book]()
       while (results.hasNext()) {
         val entity = results.next()
@@ -37,10 +42,14 @@ class BookPlan extends Plan {
           entity.getBoolean("isWakachiGaki")
         )
       }
-      implicit val bookEncoder: Encoder[Book] =deriveEncoder
+      implicit val bookEncoder: Encoder[Book] = deriveEncoder
       implicit val booksEncoder: Encoder[List[Book]] = Encoder.encodeList[Book]
-      
-      (Ok ~> ContentType("application/json") ~> ResponseString(books.asJson.noSpaces))
+      (Ok ~> ContentType("application/json") ~> ResponseHeader(
+        "next",
+        Seq(results.getCursorAfter().toUrlSafe())
+      ) ~> ResponseString(
+        books.asJson.noSpaces
+      ))
     case r @ POST(Path("/books")) =>
       val body = Body.bytes((r))
       val b = new String(body, "utf-8")
@@ -54,11 +63,11 @@ class BookPlan extends Plan {
       }
       def toEntity(book: Book) = {
         Entity
-          .newBuilder(keyFactory.newKey(book.url))
+          .newBuilder(keyFactory.newKey(book.title))
           .set("title", book.title)
           .set("url", book.url)
           .set("isSuggest", book.isSuggest)
-          .set("isWakachiGaki", book.isWakachiGaki)
+          .set("isWakachiGaki", book.isWakatiGaki)
           .set("library", book.library.mkString(","))
           .build()
       }
