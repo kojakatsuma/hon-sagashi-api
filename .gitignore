@@ -5,4 +5,4 @@ project/**
 !build.properties
 !project.sbt
 target
-keys/**
+keys/**.json
